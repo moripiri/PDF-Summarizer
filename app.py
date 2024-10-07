@@ -1,51 +1,32 @@
 import os
-from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import streamlit as st
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain import FAISS
 from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks import get_openai_callback
 
-def load_openai_api_key():
-    dotenv_path = "openai.env"
-    load_dotenv(dotenv_path)
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    if not openai_api_key:
-        raise ValueError(f"Unable to retrieve OPENAI_API_KEY from {dotenv_path}")
-    return openai_api_key
+from load_api_key import load_openai_api_key
+from process import process_text
 
-def process_text(text):
-    # Split the text into chunks using Langchain's CharacterTextSplitter
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len
-    )
-    chunks = text_splitter.split_text(text)
-
-    # Convert the chunks of text into embeddings to form a knowledge base
-    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-    knowledgeBase = FAISS.from_texts(chunks, embeddings)
-
-    return knowledgeBase
 
 def main():
-    st.title("📄PDF Summarizer")
-    st.write("Created by Hilman Singgih Wicaksana")
+    st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
+
+    st.title("📄Machine Learning Paper Summarizer")
+    st.write("Created by Yoonhee Gil")
+    st.caption("This page provides detailed summarization of machine learning paper with OpenAI GPT-4o-mini.")
     st.divider()
 
-    try:
-        os.environ["OPENAI_API_KEY"] = load_openai_api_key()
-    except ValueError as e:
-        st.error(str(e))
-        return
+    with st.sidebar:
+        openai_api_key = st.text_input("OpenAI API Key", key="chatbot_api_key", type="password")
+        os.environ["OPENAI_API_KEY"] = openai_api_key
+    # try:
+    #     os.environ["OPENAI_API_KEY"] = load_openai_api_key()
+    # except ValueError as e:
+    #     os.environ["OPENAI_API_KEY"] = openai_api_key
 
-    pdf = st.file_uploader('Upload your PDF Document', type='pdf')
+    pdf = st.file_uploader('Upload your Machine Learning Paper', type='pdf')
+    submitted = st.form_submit_button("Submit")
 
     if pdf is not None:
         pdf_reader = PdfReader(pdf)
@@ -61,14 +42,12 @@ def main():
 
         if query:
             docs = knowledgeBase.similarity_search(query)
-            OpenAIModel = "gpt-3.5-turbo-16k"
-            llm = ChatOpenAI(model=OpenAIModel, temperature=0.1)
+            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
             chain = load_qa_chain(llm, chain_type='stuff')
 
             with get_openai_callback() as cost:
                 response = chain.run(input_documents=docs, question=query)
                 print(cost)
-
             st.subheader('Summary Results:')
             st.write(response)
 
