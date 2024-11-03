@@ -1,5 +1,5 @@
 from langchain import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 
 
@@ -14,7 +14,7 @@ def process_text(text):
     chunks = text_splitter.split_text(text)
 
     # Convert the chunks of text into embeddings to form a knowledge base
-    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+    embeddings = OpenAIEmbeddings()
     knowledgeBase = FAISS.from_texts(chunks, embeddings)
 
     return knowledgeBase
